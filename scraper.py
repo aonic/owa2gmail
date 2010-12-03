@@ -4,12 +4,12 @@ Microsoft Outlook Web Access scraper
 Retrieves full, raw e-mails from Microsoft Outlook Web Access by
 screen scraping. Can do the following:
 
-    * Log into a Microsoft Outlook Web Access account with a given username
-      and password.
-    * Retrieve all e-mail IDs from the first page of your Inbox.
-    * Retrieve the full, raw source of the e-mail with a given ID.
-    * Delete an e-mail with a given ID (technically, move it to the "Deleted
-      Items" folder).
+	* Log into a Microsoft Outlook Web Access account with a given username
+	  and password.
+	* Retrieve all e-mail IDs from the first page of your Inbox.
+	* Retrieve the full, raw source of the e-mail with a given ID.
+	* Delete an e-mail with a given ID (technically, move it to the "Deleted
+	  Items" folder).
 
 The main class you use is OutlookWebScraper. See the docstrings in the code
 and the "sample usage" section below.
@@ -80,100 +80,101 @@ __author__ = 'Raja Kapur <raja.kapur@gmail.com>'
 socket.setdefaulttimeout(15)
 
 class InvalidLogin(Exception):
-    pass
+	pass
 
 class RetrievalError(Exception):
-    pass
+	pass
 
 class CookieScraper(object):
-    "Scraper that keeps track of getting and setting cookies."
-    def __init__(self):
-        self._cookies = SimpleCookie()
+	"Scraper that keeps track of getting and setting cookies."
+	def __init__(self):
+		self._cookies = SimpleCookie()
 
-    def get_page(self, url, post_data=None, headers=()):
-        """
-        Helper method that gets the given URL, handling the sending and storing
-        of cookies. Returns the requested page as a string.
-        """
-        socket.timeout(300)
-        opener = urllib.URLopener()
-        opener.addheader('Cookie', self._cookies.output(attrs=[], header='',
+	def get_page(self, url, post_data=None, headers=()):
+		"""
+		Helper method that gets the given URL, handling the sending and storing
+		of cookies. Returns the requested page as a string.
+		"""
+		socket.timeout(300)
+		opener = urllib.URLopener()
+		opener.addheader('Cookie', self._cookies.output(attrs=[], header='',
 sep=';').strip())
-        for k, v in headers:
-            opener.addheader(k, v)
-        try:
-            f = opener.open(url, post_data)
-        except IOError, e:
-            if e[1] == 302:
-                # Got a 302 redirect, but check for cookies before redirecting.
-                # e[3] is a httplib.HTTPMessage instance.
-                if e[3].dict.has_key('set-cookie'):
-                    self._cookies.load(e[3].dict['set-cookie'])
-                return self.get_page(e[3].getheader('location'))
-            else:
-                raise
-        if f.headers.dict.has_key('set-cookie'):
-            self._cookies.load(f.headers.dict['set-cookie'])
-        return f.read()
+		for k, v in headers:
+			opener.addheader(k, v)
+		try:
+			f = opener.open(url, post_data)
+		except IOError, e:
+			if e[1] == 302:
+				# Got a 302 redirect, but check for cookies before redirecting.
+				# e[3] is a httplib.HTTPMessage instance.
+				if e[3].dict.has_key('set-cookie'):
+					self._cookies.load(e[3].dict['set-cookie'])
+				return self.get_page(e[3].getheader('location'))
+			else:
+				raise
+		if f.headers.dict.has_key('set-cookie'):
+			self._cookies.load(f.headers.dict['set-cookie'])
+		return f.read()
 
 class OutlookWebScraper(CookieScraper):
-    def __init__(self, domain, username, password):
-        self.domain = domain
-        self.username, self.password = username, password
-        self.is_logged_in = False
-        self.base_href = None
-        super(OutlookWebScraper, self).__init__()
+	def __init__(self, domain, username, password):
+		self.domain = domain
+		self.username, self.password = username, password
+		self.is_logged_in = False
+		self.base_href = None
+		super(OutlookWebScraper, self).__init__()
 
-    def login(self):
-        url = urlparse.urljoin(self.domain, 'exchweb/bin/auth/owaauth.dll')
-        html = self.get_page(url, urllib.urlencode({
-            'destination': urlparse.urljoin(self.domain, 'exchange'),
-            'flags': '0',
-            'username': self.username,
-            'password': self.password,
-            'SubmitCreds': 'Log On',
-            'forcedownlevel': '0',
-            'trusted': '4',
-        }))
-        if 'You could not be logged on to Outlook Web Access' in html:
-            raise InvalidLogin
-        m = re.search(r'(?i)<BASE href="([^"]*)">', html)
-        if not m:
-            raise RetrievalError, "Couldn't find <base href> on page after logging in."
-        self.base_href = m.group(1)
-        self.is_logged_in = True
+	def login(self):
+		url = urlparse.urljoin(self.domain, 'exchweb/bin/auth/owaauth.dll')
+		html = self.get_page(url, urllib.urlencode({
+			'destination': urlparse.urljoin(self.domain, 'exchange'),
+			'flags': '0',
+			'username': self.username,
+			'password': self.password,
+			'SubmitCreds': 'Log On',
+			'forcedownlevel': '0',
+			'trusted': '4',
+		}))
+		if 'You could not be logged on to Outlook Web Access' in html:
+			raise InvalidLogin
+		m = re.search(r'(?i)<BASE href="([^"]*)">', html)
+		if not m:
+			raise RetrievalError, "Couldn't find <base href> on page after logging in."
+		self.base_href = m.group(1)
+		self.is_logged_in = True
 
-    def inbox(self):
-        """
-        Returns the message IDs for all messages on the first page of the
-        Inbox, regardless of whether they've already been read.
-        """
-        return self.get_folder('Inbox')
+	def inbox(self, unread=False):
+		"""
+		Returns the message IDs for all messages on the first page of the
+		Inbox, regardless of whether they've already been read.
+		"""
+		return self.get_folder('Inbox', unread)
 
-    def get_folder(self, folder_name):
-        """
-        Returns the message IDs for all messages on the first page of the
-        folder with the given name, regardless of whether the messages have
-        already been read. The folder name is case insensitive.
-        """
-        if not self.is_logged_in: self.login()
-        url = self.base_href + urllib.quote(folder_name) + '/?Cmd=contents'
-        html = self.get_page(url)
-        message_urls = re.findall(r'(?i)NAME=MsgID value="([^"]*)"', html)
-        return message_urls
+	def get_folder(self, folder_name, unread=False):
+		"""
+		Returns the message IDs for all messages on the first page of the
+		folder with the given name, regardless of whether the messages have
+		already been read. The folder name is case insensitive.
+		"""
+		if not self.is_logged_in: self.login()
+		url = self.base_href + urllib.quote(folder_name) + '/?Cmd=contents'
+		if unread == True: url = url + "&View=Unread%20Messages"
+		html = self.get_page(url)
+		message_urls = re.findall(r'(?i)NAME=MsgID value="([^"]*)"', html)
+		return message_urls
 
-    def get_message(self, msgid):
-        "Returns the raw e-mail for the given message ID."
-        if not self.is_logged_in: self.login()
-        # Sending the "Translate=f" HTTP header tells Outlook to include
-        # full e-mail headers. Figuring that out took way too long.
-        return self.get_page(self.base_href + msgid + '?Cmd=body', headers=[('Translate', 'f')])
+	def get_message(self, msgid):
+		"Returns the raw e-mail for the given message ID."
+		if not self.is_logged_in: self.login()
+		# Sending the "Translate=f" HTTP header tells Outlook to include
+		# full e-mail headers. Figuring that out took way too long.
+		return self.get_page(self.base_href + msgid + '?Cmd=body', headers=[('Translate', 'f')])
 
-    def delete_message(self, msgid):
-        "Deletes the e-mail with the given message ID."
-        if not self.is_logged_in: self.login()
-        return self.get_page(self.base_href + msgid, urllib.urlencode({
-            'MsgId': msgid,
-            'Cmd': 'delete',
-            'ReadForm': '1',
-        }))
+	def delete_message(self, msgid):
+		"Deletes the e-mail with the given message ID."
+		if not self.is_logged_in: self.login()
+		return self.get_page(self.base_href + msgid, urllib.urlencode({
+			'MsgId': msgid,
+			'Cmd': 'delete',
+			'ReadForm': '1',
+		}))
