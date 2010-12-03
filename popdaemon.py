@@ -49,193 +49,202 @@ __version__ = 'Python Outlook Web Access POP3 proxy version 0.0.2'
 TERMINATOR = '\r\n'
 
 def quote_dots(lines):
-    for line in lines:
-        if line.startswith("."):
-            line = "." + line
-        yield line
+	for line in lines:
+		if line.startswith("."):
+			line = "." + line
+		yield line
 
 class POPChannel(asynchat.async_chat):
-    def __init__(self, conn, quit_after_one, webmail_server):
-        self.quit_after_one = quit_after_one
-        self.webmail_server = webmail_server
-        asynchat.async_chat.__init__(self, conn)
-        self.__line = []
-        self.push('+OK %s %s' % (socket.getfqdn(), __version__))
-        self.set_terminator(TERMINATOR)
-        self._activeDataChannel = None
+	def __init__(self, conn, quit_after_one, webmail_server):
+		self.quit_after_one = quit_after_one
+		self.webmail_server = webmail_server
+		asynchat.async_chat.__init__(self, conn)
+		self.__line = []
+		self.push('+OK %s %s' % (socket.getfqdn(), __version__))
+		self.set_terminator(TERMINATOR)
+		self._activeDataChannel = None
 
-    # Overrides base class for convenience
-    def push(self, msg):
-    	#print msg
-        asynchat.async_chat.push(self, msg + TERMINATOR)
+	# Overrides base class for convenience
+	def push(self, msg):
+		#print msg
+		asynchat.async_chat.push(self, msg + TERMINATOR)
 
-    # Implementation of base class abstract method
-    def collect_incoming_data(self, data):
-        self.__line.append(data)
+	# Implementation of base class abstract method
+	def collect_incoming_data(self, data):
+		self.__line.append(data)
 
-    # Implementation of base class abstract method
-    def found_terminator(self):
-        line = ''.join(self.__line)
-        self.__line = []
-        if not line:
-            self.push('500 Error: bad syntax')
-            return
-        method = None
-        i = line.find(' ')
-        if i < 0:
-            command = line.upper()
-            arg = None
-        else:
-            command = line[:i].upper()
-            arg = line[i+1:].strip()
-        method = getattr(self, 'pop_' + command, None)
-        if not method:
-            self.push('-ERR Error : command "%s" not implemented' % command)
-            return
-        method(arg)
-        return
+	# Implementation of base class abstract method
+	def found_terminator(self):
+		line = ''.join(self.__line)
+		self.__line = []
+		if not line:
+			self.push('500 Error: bad syntax')
+			return
+		method = None
+		i = line.find(' ')
+		if i < 0:
+			command = line.upper()
+			arg = None
+		else:
+			command = line[:i].upper()
+			arg = line[i+1:].strip()
+		method = getattr(self, 'pop_' + command, None)
+		if not method:
+			self.push('-ERR Error : command "%s" not implemented' % command)
+			return
+		method(arg)
+		return
 
-    def pop_USER(self, user):
-        # Logs in any username.
-        if not user:
-            self.push('-ERR: Syntax: USER username')
-        else:
-            self.username = user # Store for later.
-            self.push('+OK Password required')
+	def pop_USER(self, user):
+		# Logs in any username.
+		if not user:
+			self.push('-ERR: Syntax: USER username')
+		else:
+			self.username = user # Store for later.
+			self.push('+OK Password required')
 
-    def pop_PASS(self, password=''):
-        self.scraper = OutlookWebScraper(self.webmail_server, self.username, password)
-        try:
-            self.scraper.login()
-        except InvalidLogin:
-            self.push('-ERR Login failed. (Wrong username/password?)')
-        else:
-            self.push('+OK User logged in')
-            self.inbox_cache = self.scraper.inbox()
-            self.msg_cache = [self.scraper.get_message(msg_id) for msg_id in self.inbox_cache]
-            #self.msg_cache = ["-" for msg_id in self.inbox_cache]
-        
-    def pop_STAT(self, arg):
-        dropbox_size = sum([len(msg) for msg in self.msg_cache])
-        #dropbox_size = len(self.inbox_cache) * 10000
-        self.push('+OK %d %d' % (len(self.inbox_cache), dropbox_size))
+	def pop_PASS(self, password=''):
+		self.scraper = OutlookWebScraper(self.webmail_server, self.username, password)
+		try:
+			self.scraper.login()
+		except InvalidLogin:
+			self.push('-ERR Login failed. (Wrong username/password?)')
+		else:
+			self.push('+OK User logged in')
+			self.inbox_cache = self.scraper.inbox()
+			self.msg_cache = [self.scraper.get_message(msg_id) for msg_id in self.inbox_cache]
+			#self.msg_cache = ["-" for msg_id in self.inbox_cache]
 
-    def pop_LIST(self, arg):
-        if not arg:
-            num_messages = len(self.inbox_cache)
-            self.push('+OK')
-            #for i in range(num_messages):
-            #	self.push('%d %d' % (i+1, 10000))
-            for i, msg in enumerate(self.msg_cache):
-                self.push('%d %d' % (i+1, len(msg)))
-            self.push(".")
-        else:
-            # TODO: Handle per-msg LIST commands
-            raise NotImplementedError
+	def pop_STAT(self, arg):
+		dropbox_size = sum([len(msg) for msg in self.msg_cache])
+		#dropbox_size = len(self.inbox_cache) * 10000
+		self.push('+OK %d %d' % (len(self.inbox_cache), dropbox_size))
 
-    def pop_RETR(self, arg):
-        if not arg:
-            self.push('-ERR: Syntax: RETR msg')
-        else:
-            # TODO: Check request is in range.
-            msg_index = int(arg) - 1
-            msg_id = self.inbox_cache[msg_index]
-            
-            #if(msg_index not in self.msg_cache):
-            #	self.msg_cache[msg_index] = self.scraper.get_message(msg_id)
-            
-            msg = self.msg_cache[msg_index]
-            msg = msg.lstrip() + TERMINATOR
+	def pop_UIDL(self, arg):
+		if not arg:
+			self.push('+OK')
+			for i, msg in enumerate(self.msg_cache):
+				self.push('%d %d' % (i+1, i+1))
+			self.push(".")
+		else:
+			self.push('+OK %s %s' % (arg, arg))
 
-            self.push('+OK')
+	def pop_LIST(self, arg):
+		if not arg:
+			num_messages = len(self.inbox_cache)
+			self.push('+OK')
+			#for i in range(num_messages):
+			#	self.push('%d %d' % (i+1, 10000))
+			for i, msg in enumerate(self.msg_cache):
+				self.push('%d %d' % (i+1, len(msg)))
+			self.push(".")
+		else:
+			# TODO: Handle per-msg LIST commands
+			raise NotImplementedError
 
-            for line in quote_dots(msg.split(TERMINATOR)):
-                self.push(line)
-            self.push('.')
+	def pop_RETR(self, arg):
+		if not arg:
+			self.push('-ERR: Syntax: RETR msg')
+		else:
+			# TODO: Check request is in range.
+			msg_index = int(arg) - 1
+			msg_id = self.inbox_cache[msg_index]
 
-            # Delete the message
-            self.scraper.delete_message(msg_id)
-            
-    def pop_TOP(self, arg):
-        if not arg:
-            self.push('-ERR: Syntax: RETR msg')
-        else:
-            # TODO: Check request is in range.
-            msg_index = int(arg.split(' ')[0]) - 1
-            msg_id = self.inbox_cache[msg_index]
-            
-            #if(msg_index not in self.msg_cache):
-            #	self.msg_cache[msg_index] = self.scraper.get_message(msg_id)
-            
-            msg = self.msg_cache[msg_index]
-            msg = msg.split('\r\n\r\n')[0]
-            msg = msg.lstrip() + TERMINATOR
+			#if(msg_index not in self.msg_cache):
+			#	self.msg_cache[msg_index] = self.scraper.get_message(msg_id)
 
-            self.push('+OK')
+			msg = self.msg_cache[msg_index]
+			msg = msg.lstrip() + TERMINATOR
 
-            for line in quote_dots(msg.split(TERMINATOR)):
-                self.push(line)
-            self.push('.')
+			self.push('+OK')
 
-    def pop_QUIT(self, arg):
-        self.push('+OK Goodbye')
-        self.close_when_done()
-        if self.quit_after_one:
-            # This SystemExit gets propogated to handle_error(),
-            # which stops the program. Slightly hackish.
-            raise SystemExit
+			for line in quote_dots(msg.split(TERMINATOR)):
+				self.push(line)
+			self.push('.')
 
-    def handle_error(self):
-        if self.quit_after_one:
-            sys.exit(0) # Exit.
-        else:
-            asynchat.async_chat.handle_error(self)
+			# Delete the message
+			self.scraper.delete_message(msg_id)
+
+	def pop_TOP(self, arg):
+		if not arg:
+			self.push('-ERR: Syntax: RETR msg')
+		else:
+			# TODO: Check request is in range.
+			msg_index = int(arg.split(' ')[0]) - 1
+			msg_id = self.inbox_cache[msg_index]
+
+			#if(msg_index not in self.msg_cache):
+			#	self.msg_cache[msg_index] = self.scraper.get_message(msg_id)
+
+			msg = self.msg_cache[msg_index]
+			msg = msg.split('\r\n\r\n')[0]
+			msg = msg.lstrip() + TERMINATOR
+
+			self.push('+OK')
+
+			for line in quote_dots(msg.split(TERMINATOR)):
+				self.push(line)
+			self.push('.')
+
+	def pop_QUIT(self, arg):
+		self.push('+OK Goodbye')
+		self.close_when_done()
+		if self.quit_after_one:
+			# This SystemExit gets propogated to handle_error(),
+			# which stops the program. Slightly hackish.
+			raise SystemExit
+
+	def handle_error(self):
+		if self.quit_after_one:
+			sys.exit(0) # Exit.
+		else:
+			asynchat.async_chat.handle_error(self)
 
 class POP3Proxy(asyncore.dispatcher):
-    def __init__(self, localaddr, quit_after_one, webmail_server):
-        """
-        localaddr is a tuple of (ip_address, port).
+	def __init__(self, localaddr, quit_after_one, webmail_server):
+		"""
+		localaddr is a tuple of (ip_address, port).
 
-        quit_after_one is a boolean specifying whether the server should quit
-        after serving one session.
-        """
-        self.quit_after_one = quit_after_one
-        self.webmail_server = webmail_server;
-        asyncore.dispatcher.__init__(self)
-        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        # try to re-use a server port if possible
-        self.set_reuse_addr()
-        self.bind(localaddr)
-        self.listen(5)
+		quit_after_one is a boolean specifying whether the server should quit
+		after serving one session.
+		"""
+		self.quit_after_one = quit_after_one
+		self.webmail_server = webmail_server;
+		asyncore.dispatcher.__init__(self)
+		self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+		# try to re-use a server port if possible
+		self.set_reuse_addr()
+		self.bind(localaddr)
+		self.listen(5)
 
-    def handle_accept(self):
-        conn, addr = self.accept()
-        channel = POPChannel(conn, self.quit_after_one, self.webmail_server)
+	def handle_accept(self):
+		conn, addr = self.accept()
+		channel = POPChannel(conn, self.quit_after_one, self.webmail_server)
 
 if __name__ == '__main__':
-    from optparse import OptionParser
-    parser = OptionParser("usage: %prog [options]")
-    parser.add_option('--once', action='store_true', dest='once',
-        help='Serve one POP transaction and then quit. (Server runs forever by default.)')
-    parser.add_option('-s', '--owa-server', dest='webmail_server',
-        help='URL to Outlook Web Access server. (eg: https://webmail.example.com)')
-    options, args = parser.parse_args()
-    
-    if(options.webmail_server == None):
-    	sys.exit("""Usage: popdaemon.py [options]
+	from optparse import OptionParser
+	parser = OptionParser("usage: %prog [options]")
+	parser.add_option('--once', action='store_true', dest='once',
+		help='Serve one POP transaction and then quit. (Server runs forever by default.)')
+	parser.add_option('-s', '--owa-server', dest='webmail_server',
+		help='URL to Outlook Web Access server. (eg: https://webmail.example.com)')
+	options, args = parser.parse_args()
+
+	if(options.webmail_server == None):
+		sys.exit("""Usage: popdaemon.py [options]
 
 Options:
   -h, --help            show this help message and exit
   --once                Serve one POP transaction and then quit. (Server runs
-                        forever by default.)
+						forever by default.)
   -s WEBMAIL_SERVER, --owa-server=WEBMAIL_SERVER
-                        URL to Outlook Web Access server. (eg:
-                        https://webmail.example.com)
-                        
+						URL to Outlook Web Access server. (eg:
+						https://webmail.example.com)
+
 WEBMAIL_SERVER is a required argument""")
-    
-    proxy = POP3Proxy(('127.0.0.1', 8110), options.once is True, options.webmail_server)
-    try:
-        asyncore.loop()
-    except KeyboardInterrupt:
-        pass
+
+	proxy = POP3Proxy(('127.0.0.1', 8110), options.once is True, options.webmail_server)
+	try:
+		asyncore.loop()
+	except KeyboardInterrupt:
+		pass
