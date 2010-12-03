@@ -1,17 +1,14 @@
 <h1>OWA-2-GMAIL<h1>
-<p>
- - The POP daemon should be usable in the current version, I've tested it with Evolution Mail on Ubuntu 10.10. 
- - Gmail importing works if you call the append function manually, I'm still working on fixing up gmail.py to do that seamlessly.
-</p>
+- The POP daemon should be usable in the current version, I've tested it with Evolution Mail on Ubuntu 10.10. 
+- Gmail importing works if you call the append function manually, I'm still working on fixing up gmail.py to do that seamlessly.
 
 <h3>Origin Documentation from <a href="http://code.google.com/p/weboutlook/">weboutlook</a></h3>
-<p>
 weboutlook is a Python module that retrieves full, raw e-mails from Microsoft Outlook Web Access by screen scraping. It can do the following:
 
- - Log into a Microsoft Outlook Web Access account with a given username and password.
- - Retrieve all e-mail IDs from the first page of your Inbox.
- - Retrieve the full, raw source of the e-mail with a given ID.
- - Delete an e-mail with a given ID (technically, move it to the 'Deleted Items' folder).
+- Log into a Microsoft Outlook Web Access account with a given username and password.
+- Retrieve all e-mail IDs from the first page of your Inbox.
+- Retrieve the full, raw source of the e-mail with a given ID.
+- Delete an e-mail with a given ID (technically, move it to the 'Deleted Items' folder).
 
 <b>Sample Usage:</b>
 
@@ -32,4 +29,3 @@ scraper.InvalidLogin
 
 # Delete a message. >>> s.delete_message('/Inbox/Hey%20there.EML')
 </pre>
-</p>
