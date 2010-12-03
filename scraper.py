@@ -52,7 +52,7 @@ in once.
 # By:
 #   Raja Kapur <raja.kapur@gmail.com>
 #
-# fork: https://github.com/aonic/owa2gmail
+# https://github.com/aonic/owa2gmail
 # weboutlook: http://code.google.com/p/weboutlook/
 
 # Copyright (C) 2006 Adrian Holovaty <holovaty@gmail.com>

@@ -4,11 +4,12 @@
 
 # Forked from:
 #   Scott Yang's maildir2gmail script 
+#   permission granted over email on Dec 3, 2010 EST
 #
 # By:
 #   Raja Kapur <raja.kapur@gmail.com>
 #
-# fork: https://github.com/aonic/owa2gmail
+# https://github.com/aonic/owa2gmail
 # maildir2gmail: http://scott.yang.id.au/2009/01/migrate-emails-maildir-gmail/
 
 __version__ = '0.1'

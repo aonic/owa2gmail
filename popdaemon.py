@@ -17,7 +17,7 @@ background.
 # By:
 #   Raja Kapur <raja.kapur@gmail.com>
 #
-# fork: https://github.com/aonic/owa2gmail
+# https://github.com/aonic/owa2gmail
 # weboutlook: http://code.google.com/p/weboutlook/
 
 # Based on gmailpopd.py by follower@myrealbox.com,
