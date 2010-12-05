@@ -2,7 +2,7 @@ Outlook Web Access Export Tools
 ===============================
 
 - The POP daemon should be usable in the current version, I've tested it with Evolution Mail on Ubuntu 10.10 and GMail Mail Fetcher</li> 
-- Gmail importing works if you call the append function manually, I'm still working on fixing up gmail.py to do that seamlessly.
+- `gmail.py` should be usable if you call the append() function manually after fetching the data using `scraper.py`
 
 Auto-download New Emails to GMail's Mail Fetcher from Outlook Web Access
 ------------------------------------------------------------------------
