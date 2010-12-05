@@ -3,7 +3,7 @@
 - The POP daemon should be usable in the current version, I've tested it with Evolution Mail on Ubuntu 10.10.</li> 
 - Gmail importing works if you call the append function manually, I'm still working on fixing up gmail.py to do that seamlessly.
 
-### Using POP Daemon to Download Emails using Gmail's Mail Fetcher from Outlook Web Access
+### Auto-download New Emails to Gmail's Mail Fetcher from Outlook Web Access
 
 - Open your port 2221 so Google's servers can access the POP daemon
 - `python popdaemon.py --unread --owa-server='https://webaccess.corp-domain.com'`
