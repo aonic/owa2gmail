@@ -113,11 +113,9 @@ class POPChannel(asynchat.async_chat):
 			self.push('+OK User logged in')
 			self.inbox_cache = self.scraper.inbox()
 			self.msg_cache = [self.scraper.get_message(msg_id) for msg_id in self.inbox_cache]
-			#self.msg_cache = ["-" for msg_id in self.inbox_cache]
 
 	def pop_STAT(self, arg):
 		dropbox_size = sum([len(msg) for msg in self.msg_cache])
-		#dropbox_size = len(self.inbox_cache) * 10000
 		self.push('+OK %d %d' % (len(self.inbox_cache), dropbox_size))
 
 	def pop_UIDL(self, arg):
@@ -131,10 +129,7 @@ class POPChannel(asynchat.async_chat):
 
 	def pop_LIST(self, arg):
 		if not arg:
-			num_messages = len(self.inbox_cache)
 			self.push('+OK')
-			#for i in range(num_messages):
-			#	self.push('%d %d' % (i+1, 10000))
 			for i, msg in enumerate(self.msg_cache):
 				self.push('%d %d' % (i+1, len(msg)))
 			self.push(".")
@@ -149,10 +144,6 @@ class POPChannel(asynchat.async_chat):
 			# TODO: Check request is in range.
 			msg_index = int(arg) - 1
 			msg_id = self.inbox_cache[msg_index]
-
-			#if(msg_index not in self.msg_cache):
-			#	self.msg_cache[msg_index] = self.scraper.get_message(msg_id)
-
 			msg = self.msg_cache[msg_index]
 			msg = msg.lstrip() + TERMINATOR
 
@@ -167,15 +158,10 @@ class POPChannel(asynchat.async_chat):
 
 	def pop_TOP(self, arg):
 		if not arg:
-			self.push('-ERR: Syntax: RETR msg')
+			self.push('-ERR: Syntax: TOP msg')
 		else:
 			# TODO: Check request is in range.
 			msg_index = int(arg.split(' ')[0]) - 1
-			msg_id = self.inbox_cache[msg_index]
-
-			#if(msg_index not in self.msg_cache):
-			#	self.msg_cache[msg_index] = self.scraper.get_message(msg_id)
-
 			msg = self.msg_cache[msg_index]
 			msg = msg.split('\r\n\r\n')[0]
 			msg = msg.lstrip() + TERMINATOR
@@ -231,19 +217,9 @@ if __name__ == '__main__':
 	options, args = parser.parse_args()
 
 	if(options.webmail_server == None):
-		sys.exit("""Usage: popdaemon.py [options]
+		sys.exit("WEBMAIL_SERVER is a required argument\n\nSee --help for details")
 
-Options:
-  -h, --help            show this help message and exit
-  --once                Serve one POP transaction and then quit. (Server runs
-						forever by default.)
-  -s WEBMAIL_SERVER, --owa-server=WEBMAIL_SERVER
-						URL to Outlook Web Access server. (eg:
-						https://webmail.example.com)
-
-WEBMAIL_SERVER is a required argument""")
-
-	proxy = POP3Proxy(('127.0.0.1', 8110), options.once is True, options.webmail_server)
+	proxy = POP3Proxy(('0.0.0.0', 2221), options.once is True, options.webmail_server)
 	try:
 		asyncore.loop()
 	except KeyboardInterrupt:
