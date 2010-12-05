@@ -55,9 +55,9 @@ def quote_dots(lines):
 		yield line
 
 class POPChannel(asynchat.async_chat):
-	def __init__(self, conn, quit_after_one, webmail_server):
-		self.quit_after_one = quit_after_one
-		self.webmail_server = webmail_server
+	def __init__(self, conn, options):
+		self.webmail_server = options.webmail_server
+		self.unread_messages = options.unread is True
 		asynchat.async_chat.__init__(self, conn)
 		self.__line = []
 		self.push('+OK %s %s' % (socket.getfqdn(), __version__))
@@ -111,7 +111,7 @@ class POPChannel(asynchat.async_chat):
 			self.push('-ERR Login failed. (Wrong username/password?)')
 		else:
 			self.push('+OK User logged in')
-			self.inbox_cache = self.scraper.inbox()
+			self.inbox_cache = self.scraper.inbox(self.unread_messages)
 			self.msg_cache = [self.scraper.get_message(msg_id) for msg_id in self.inbox_cache]
 
 	def pop_STAT(self, arg):
@@ -175,27 +175,20 @@ class POPChannel(asynchat.async_chat):
 	def pop_QUIT(self, arg):
 		self.push('+OK Goodbye')
 		self.close_when_done()
-		if self.quit_after_one:
-			# This SystemExit gets propogated to handle_error(),
-			# which stops the program. Slightly hackish.
-			raise SystemExit
 
 	def handle_error(self):
-		if self.quit_after_one:
-			sys.exit(0) # Exit.
-		else:
-			asynchat.async_chat.handle_error(self)
+		asynchat.async_chat.handle_error(self)
 
 class POP3Proxy(asyncore.dispatcher):
-	def __init__(self, localaddr, quit_after_one, webmail_server):
+	def __init__(self, localaddr, options):
 		"""
 		localaddr is a tuple of (ip_address, port).
 
-		quit_after_one is a boolean specifying whether the server should quit
-		after serving one session.
+		options.unread is a boolean specifying whether the server should only retrieve unread message.
+		
+		options.webmail_server is the subdomain where OWA is accessed
 		"""
-		self.quit_after_one = quit_after_one
-		self.webmail_server = webmail_server;
+		self.options = options
 		asyncore.dispatcher.__init__(self)
 		self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
 		# try to re-use a server port if possible
@@ -205,21 +198,23 @@ class POP3Proxy(asyncore.dispatcher):
 
 	def handle_accept(self):
 		conn, addr = self.accept()
-		channel = POPChannel(conn, self.quit_after_one, self.webmail_server)
+		channel = POPChannel(conn, self.options)
 
 if __name__ == '__main__':
 	from optparse import OptionParser
 	parser = OptionParser("usage: %prog [options]")
-	parser.add_option('--once', action='store_true', dest='once',
-		help='Serve one POP transaction and then quit. (Server runs forever by default.)')
-	parser.add_option('-s', '--owa-server', dest='webmail_server',
-		help='URL to Outlook Web Access server. (eg: https://webmail.example.com)')
+	parser.add_option('--unread', action='store_true', dest='unread',
+		help='Only get unread messages (gets all messages from first page by default.)')
+	parser.add_option('--owa-server', dest='webmail_server',
+		help='Required: URL to Outlook Web Access server. (eg: https://webmail.example.com)')
 	options, args = parser.parse_args()
 
 	if(options.webmail_server == None):
-		sys.exit("WEBMAIL_SERVER is a required argument\n\nSee --help for details")
+		print '%s: %s' % (sys.argv[0], "--owa-server is a required option")
+        print '%s: Try --help for usage details.' % (sys.argv[0])
+        sys.exit(0)
 
-	proxy = POP3Proxy(('0.0.0.0', 2221), options.once is True, options.webmail_server)
+	proxy = POP3Proxy(('0.0.0.0', 2221), options)
 	try:
 		asyncore.loop()
 	except KeyboardInterrupt:
