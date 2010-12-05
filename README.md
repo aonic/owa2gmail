@@ -1,19 +1,18 @@
-# Outlook Web Access Export Tools
+Outlook Web Access Export Tools
+===============================
 
 - The POP daemon should be usable in the current version, I've tested it with Evolution Mail on Ubuntu 10.10.</li> 
 - Gmail importing works if you call the append function manually, I'm still working on fixing up gmail.py to do that seamlessly.
 
-### Auto-download New Emails to Gmail's Mail Fetcher from Outlook Web Access
+Auto-download New Emails to Gmail's Mail Fetcher from Outlook Web Access
+------------------------------------------------------------------------
 
 1. Open port `2221` on the machine you're going to run `popdaemon.py` on so Google's servers can access it
 2. `python popdaemon.py --unread --owa-server='https://webaccess.corp-domain.com'`
 3. Follow Gmail's instructions for Mail Fetcher, give it your IP address for the POP server, and 2221 as the port
 
-
----
-
-
-### Origin Documentation from [weboutlook](http://code.google.com/p/weboutlook/)
+Origin Documentation from [weboutlook](http://code.google.com/p/weboutlook/)
+----------------------------------------------------------------------------
 
 weboutlook is a Python module that retrieves full, raw e-mails from Microsoft Outlook Web Access by screen scraping. It can do the following:
 
