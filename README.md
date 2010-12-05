@@ -5,9 +5,9 @@
 
 ### Auto-download New Emails to Gmail's Mail Fetcher from Outlook Web Access
 
-- Open your port 2221 so Google's servers can access the POP daemon
-- `python popdaemon.py --unread --owa-server='https://webaccess.corp-domain.com'`
-- Follow Gmail's instructions for Mail Fetcher, give it your IP address for the POP server, and 2221 as the port
+1. Open your port `2221` on the machine you're going to run `popdaemon.py` on so Google's servers can access it
+2. `python popdaemon.py --unread --owa-server='https://webaccess.corp-domain.com'`
+3. Follow Gmail's instructions for Mail Fetcher, give it your IP address for the POP server, and 2221 as the port
 
 ### Origin Documentation from [weboutlook](http://code.google.com/p/weboutlook/)
 
